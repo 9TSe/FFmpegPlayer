@@ -1,0 +1,93 @@
+QWidget {
+    background-color:rgb(20,30,50);
+}
+
+QLineEdit {
+    border: none;
+    border-radius: 20px;
+    background-color: rgba(23,23,27,150);
+    font-family: "Cascadia Code";
+    font-size: 16px;
+    color:rgb(255,255,255);
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-bottom: 2px;
+}
+
+QLabel {
+    color:rgb(255,255,255);
+    background-color: transparent;
+    font-family: "Cascadia Code";
+    font-size: 16px;
+}
+
+QPushButton {
+    border: none;
+    border-radius: 10px;
+    text-align: center;
+    background-color: rgb(255,255,255);
+    font-family: "Cascadia Code";
+    font-size: 16px;
+    color: rgb(20,20,20);
+    padding-bottom: 2px;
+    min-width: 30px;
+    min-height: 20px;
+}
+QPushButton:hover {
+    background-color: rgb(230,230,230);
+    color: rgb(255,255,255);
+}
+
+/*播放进度条*/
+QSlider::groove:horizontal#slider_AVPts {
+    border:0px;
+}
+QSlider::sub-page:horizontal#slider_AVPts {
+    background:rgb(255,182,193);
+    margin-top:7px;
+    margin-bottom:7px;
+}
+QSlider::add-page:horizontal#slider_AVPts {
+    background:rgb(83,83,83);
+    margin-top:7px;
+    margin-bottom:7px;
+}
+/*正常拖动把手样式*/
+QSlider::handle:horizontal#slider_AVPts {
+    background-color: rgb(255, 182, 193);
+    border-radius: 7px;
+    border:none;
+    width:14px;
+    margin-top: 2px;
+    margin-bottom: 2px;
+}
+/*鼠标悬停把手样式*/
+QSlider::handle:horizontal:hover#slider_AVPts {
+    background-color: rgb(255, 180, 199);
+    border:none;
+    width: 18px;
+    border-radius:9px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+
+/*音量条*/
+QSlider::groove:horizontal#slider_volume {
+    border:0px;
+}
+QSlider::sub-page:horizontal#slider_volume {
+    background:rgb(255, 180, 199);
+    margin-top:3px;
+    margin-bottom:3px;
+}
+QSlider::add-page:horizontal#slider_volume {
+    background:rgb(92,92,92);
+    margin-top:3px;
+    margin-bottom:3px;
+}
+QSlider::handle:horizontal#slider_volume {
+    background-color: rgb(255,255,255);
+    border:none;
+    width:12px;
+    border-radius:6px;
+}

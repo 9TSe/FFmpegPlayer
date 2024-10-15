@@ -1,0 +1,13 @@
+<RCC>
+    <qresource prefix="/">
+        <file>res/images/lion5.jpg</file>
+        <file>res/images/knight.jpg</file>
+        <file>res/images/lion6.jpg</file>
+        <file>res/images/madline2.jpg</file>
+        <file>res/images/madline3.jpg</file>
+        <file>res/images/madline4.jpg</file>
+        <file>res/images/madline9.jpg</file>
+        <file>res/images/zoe2.PNG</file>
+        <file>res/qss/widget.qss</file>
+    </qresource>
+</RCC>
