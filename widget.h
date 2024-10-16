@@ -25,8 +25,17 @@ protected:
 //    virtual void keyReleaseEvent(QKeyEvent* event) override;
 
 private:
+    void initUi();
+
+private slots:
+    void addFile();
+    void playSlot();
+
+private:
     Ui::Widget *ui;
     AVPlayer *m_player;
+
+    QString m_formatFilter;
 };
 
 #endif // WIDGET_H

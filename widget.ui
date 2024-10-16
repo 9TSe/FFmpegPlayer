@@ -103,7 +103,7 @@
     </spacer>
    </item>
    <item>
-    <widget class="QOpenGLWidget" name="opengl_widget">
+    <widget class="OpenGLWidget" name="opengl_widget">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
        <horstretch>0</horstretch>
@@ -291,6 +291,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>OpenGLWidget</class>
+   <extends>QOpenGLWidget</extends>
+   <header>opengl_widget.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

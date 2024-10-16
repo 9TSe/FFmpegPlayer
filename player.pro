@@ -31,6 +31,8 @@ RESOURCES += \
 RC_ICON = lion8.ico
 
 include(Utils/Utils.pri)
+include(View/View.pri)
+include(Player/Player.pri)
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

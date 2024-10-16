@@ -28,10 +28,8 @@ void initLogger(const QString &dir)
 
 int main(int argc, char *argv[])
 {
-    QCoreApplication::setOrganizationName("nitesy");
-    QCoreApplication::setOrganizationDomain("9tse.github.io");
-    QCoreApplication::setApplicationName("MediaPlayer");
-    QCoreApplication::setApplicationVersion("0.0.0");
+    QCoreApplication::setApplicationName("FFmpegPlayer");
+    QCoreApplication::setApplicationVersion("0.0.2");
 
 #if(QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
     QGuiApplication::setHighDpiScaleFactorRoundingPolicy(Qt::HighDpiScaleFactorRoundingPolicy::Floor);
