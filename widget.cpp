@@ -30,7 +30,10 @@ Widget::~Widget()
 
 void Widget::playSlot()
 {
-
+    const QString url = ui->lineEdit_input->text();
+    if(url.count()){
+        m_player->play(url);
+    }
 }
 
 

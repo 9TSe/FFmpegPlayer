@@ -1,5 +1,6 @@
 #include "opengl_widget.h"
-
+#include "YUV422Frame.h"
+#include <QsLog.h>
 
 const char* vertexShade = R"(
         #version 450 core
@@ -74,3 +75,15 @@ void OpenGLWidget::paintGL()
     program->release();
 }
 
+
+void OpenGLWidget::showYUV(QSharedPointer<YUV422Frame> frame)
+{
+    if(frame.isNull()){
+        QLOG_ERROR() << "showYUV's frame is nullptr";
+    }
+    else if(!m_frame.isNull()){
+        m_frame.reset();
+    }
+    m_frame = frame;
+    update();
+}

@@ -6,6 +6,8 @@
 #include <QOpenGLShaderProgram>
 #include <QOpenGLBuffer>
 
+class YUV422Frame;
+
 class OpenGLWidget : public QOpenGLWidget, public QOpenGLFunctions
 {
     Q_OBJECT
@@ -19,7 +21,11 @@ protected:
     virtual void paintGL() override;
     virtual void resizeGL(int w, int h) override;
 
+public slots:
+    void showYUV(QSharedPointer<YUV422Frame> frame);
+
 private:
+    QSharedPointer<YUV422Frame> m_frame;
     QOpenGLBuffer vbo;
     QOpenGLShaderProgram *program;
 };
