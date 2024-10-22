@@ -442,3 +442,26 @@ void Decoder::pushVFrame(AVFrame *frame)
     m_videoFrameQueue.pushIndex = (m_videoFrameQueue.pushIndex + 1) % m_maxFrameQueueSize;
     m_videoFrameQueue.size++;
 }
+
+int Decoder::getAFrame(AVFrame *frame)
+{
+    if(!frame) return 0;
+    std::unique_lock<std::mutex> lock(m_audioFrameQueue.mutex);
+    while(m_audioFrameQueue.size == 0){
+        bool ret = m_audioFrameQueue.cond.wait_for(lock, std::chrono::milliseconds(100), [&](){
+            return !m_exit.load() && m_audioFrameQueue.size;
+        });
+        if(!ret) return 0;
+    }
+
+    if(m_audioFrameQueue.frameVec[m_audioFrameQueue.readIndex].serial != m_audioPktQueue.serial){
+        av_frame_unref(&m_audioFrameQueue.frameVec[m_audioFrameQueue.readIndex].frame);
+        m_audioFrameQueue.readIndex = (m_audioFrameQueue.readIndex + 1) % m_maxFrameQueueSize;
+        m_audioFrameQueue.size--;
+        return 0;
+    }
+    av_frame_move_ref(frame, &m_audioFrameQueue.frameVec[m_audioFrameQueue.readIndex].frame);
+    m_audioFrameQueue.readIndex = (m_audioFrameQueue.readIndex + 1) % m_maxFrameQueueSize;
+    m_audioFrameQueue.size--;
+    return 1;
+}

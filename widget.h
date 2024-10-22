@@ -30,12 +30,15 @@ private:
 private slots:
     void addFile();
     void playSlot();
+    void durationChangedSlot(uint32_t duration);
+    void terminateSlot();
 
 private:
     Ui::Widget *ui;
     AVPlayer *m_player;
 
     QString m_formatFilter;
+    uint32_t m_duration;
 };
 
 #endif // WIDGET_H

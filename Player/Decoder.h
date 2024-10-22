@@ -18,6 +18,17 @@ public:
     bool decode(const QString& url);
     void exit();
 
+    inline uint32_t duraiton() const {return m_duration;}
+    inline int audioIndex() const {return m_audioIndex;}
+    inline int videoIndex() const {return m_videoIndex;}
+    inline bool isExit() const {return m_exit.load();}
+    inline int videoPktSerial() const {return m_videoPktQueue.serial;}
+    inline AVCodecParameters *auidoCodecPar() const {return m_pAvFormatCtx->streams[m_audioIndex]->codecpar;}
+    inline AVCodecParameters *videoCodecPar() const {return m_pAvFormatCtx->streams[m_videoIndex]->codecpar;}
+    inline AVFormatContext *formatContext() const {return m_pAvFormatCtx;}
+
+    int getAFrame(AVFrame *frame);
+
 private:
     void initVal(); //复用播放器 重置变量
     void demux();

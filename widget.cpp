@@ -20,6 +20,10 @@ Widget::Widget(QWidget *parent) :
     ui->opengl_widget->show(); //test openGL
     connect(ui->btn_addFile, &QPushButton::clicked, this, &Widget::addFile);
     connect(ui->btn_play, &QPushButton::clicked, this, &Widget::playSlot);
+    connect(m_player, &AVPlayer::durationChanged, this, &Widget::durationChangedSlot);
+    // Queueconnection 能够确保线程安全 反例(另一个线程 调用主线程的槽函数
+    // 音视频结束
+    connect(m_player, &AVPlayer::avTerminate, this, &Widget::terminateSlot, Qt::QueuedConnection);
 }
 
 Widget::~Widget()
@@ -60,4 +64,16 @@ void Widget::addFile()
 {
     QString url = QFileDialog::getOpenFileName(this, "chose file", QDir::currentPath(), m_formatFilter);
     ui->lineEdit_input->setText(url);
+}
+
+void Widget::durationChangedSlot(uint32_t duration)
+{
+    ui->label_duration->setText(QString("%1:%2").arg(duration / 60, 2, 10, QLatin1Char('0'))
+                                                .arg(duration % 60, 2, 10, QLatin1Char('0')));
+    m_duration = duration;
+}
+
+void Widget::terminateSlot()
+{
+
 }
