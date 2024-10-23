@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>963</width>
-    <height>590</height>
+    <width>880</width>
+    <height>586</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -129,7 +129,7 @@
     </spacer>
    </item>
    <item>
-    <widget class="QSlider" name="slider_AVPts">
+    <widget class="AVPtsSlider" name="slider_AVPts">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
@@ -274,7 +274,7 @@
       </layout>
      </item>
      <item>
-      <widget class="QSlider" name="slider_volume">
+      <widget class="SoundSlider" name="slider_volume">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
@@ -282,8 +282,14 @@
      </item>
      <item>
       <widget class="QLabel" name="label_volume">
+       <property name="minimumSize">
+        <size>
+         <width>50</width>
+         <height>0</height>
+        </size>
+       </property>
        <property name="text">
-        <string>50%</string>
+        <string>00%</string>
        </property>
       </widget>
      </item>
@@ -293,9 +299,19 @@
  </widget>
  <customwidgets>
   <customwidget>
+   <class>AVPtsSlider</class>
+   <extends>QSlider</extends>
+   <header>slider_pts.h</header>
+  </customwidget>
+  <customwidget>
    <class>OpenGLWidget</class>
    <extends>QOpenGLWidget</extends>
    <header>opengl_widget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>SoundSlider</class>
+   <extends>QSlider</extends>
+   <header>sound_slider.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

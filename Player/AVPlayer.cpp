@@ -1,5 +1,6 @@
 #include "AVPlayer.h"
 #include "MsgBox.h"
+#include "ThreadPool.h"
 #include <QFileInfo>
 #include <QsLog.h>
 
@@ -14,19 +15,74 @@ AVPlayer::AVPlayer(QObject *parent)
       m_swsCtx(nullptr),
       m_swrCtx(nullptr),
       m_volume(50),
-      m_buffer(nullptr)
+      m_videoBuf(nullptr)
 {
     m_audioFrame = av_frame_alloc();
 }
 
 AVPlayer::~AVPlayer()
 {
-
+    if(m_audioFrame){
+        av_frame_free(&m_audioFrame);
+    }
+    initPlayer();
+    if(m_decoder){
+        delete m_decoder;
+        m_decoder = nullptr;
+    }
+    if(m_swrCtx){
+        swr_free(&m_swrCtx);
+    }
+    if(m_swsCtx){
+        sws_freeContext(m_swsCtx);
+    }
+    if(m_audioBuf){
+        av_free(m_audioBuf);
+    }
+    if(m_videoBuf){
+        av_free(m_videoBuf);
+    }
 }
 
 void AVPlayer::initPlayer()
 {
+    if(getState() != AVPlayer::AV_STOPPED){
+        m_exit = true;
+        if(getState() == AVPlayer::AV_PLAYING){
+            SDL_PauseAudio(1); //传入1停止音频
+        }
+        m_decoder->exit();
+        SDL_CloseAudio();
+        if(m_swrCtx){
+            swr_free(&m_swrCtx);
+        }
+        if(m_swsCtx){
+            sws_freeContext(m_swsCtx);
+        }
+        m_swrCtx = nullptr;
+        m_swsCtx = nullptr;
+    }
+}
 
+AVPlayer::PlayState AVPlayer::getState()
+{
+    AVPlayer::PlayState state;
+    switch (SDL_GetAudioStatus())
+    {
+    case SDL_AUDIO_PLAYING:
+        state = AVPlayer::AV_PLAYING;
+        break;
+    case SDL_AUDIO_PAUSED:
+        state = AVPlayer::AV_PAUSED;
+        break;
+    case SDL_AUDIO_STOPPED:
+        state = AVPlayer::AV_STOPPED;
+        break;
+    default:
+        state = AVPlayer::AV_NONE;
+        break;
+    }
+    return state;
 }
 
 bool AVPlayer::play(const QString& url)
@@ -56,7 +112,7 @@ bool AVPlayer::play(const QString& url)
         return false;
     }
 
-
+    initVideo();
     return true;
 }
 
@@ -82,6 +138,12 @@ bool AVPlayer::initSDL()
     audioSpec.samples = m_audioCodecPar->frame_size; // 每个音频帧的样本数量(1024
     audioSpec.callback = fillAudioStreamCallback;
 
+    if(SDL_OpenAudio(&audioSpec, nullptr) < 0){
+        QLOG_ERROR() << "SDL_OpenAudio fail";
+        return false;
+    }
+
+
     m_fmtCtx = m_decoder->formatContext();
     m_audioIndex = m_decoder->audioIndex();
     m_targetSampleFmt = AV_SAMPLE_FMT_S16; //16bits 位深
@@ -90,10 +152,6 @@ bool AVPlayer::initSDL()
     m_targetNbSamples = m_audioCodecPar->frame_size; // 每个音频帧的数量(1024
     av_channel_layout_default(&m_targetChannelLayout, m_targetChannels);
 
-    if(SDL_OpenAudio(&audioSpec, nullptr) < 0){
-        QLOG_ERROR() << "SDL_OpenAudio fail";
-        return false;
-    }
     SDL_PauseAudio(0);
     return true;
 }
@@ -113,15 +171,15 @@ void AVPlayer::fillAudioStreamCallback(void *userData, uint8_t *stream, int len)
             if(ret)
             {
                 player->m_audioBufIndex = 0;
-//                if((player->m_targetSampleFmt != player->m_audioFrame->format ||
-//                        player->m_targetFreq != player->m_audioFrame->sample_rate ||
-//                        player->m_targetNbSamples != player->m_audioFrame->nb_samples ||
-//                        !compareChannelLayouts(&player->m_targetChannelLayout, &player->m_audioFrame->ch_layout))
-//                        && !player->m_swrCtx)
                 if((player->m_targetSampleFmt != player->m_audioFrame->format ||
                         player->m_targetFreq != player->m_audioFrame->sample_rate ||
-                        player->m_targetNbSamples != player->m_audioFrame->nb_samples)
-                        && !player->m_swrCtx)
+                        player->m_targetNbSamples != player->m_audioFrame->nb_samples
+                        ||!AVPlayer::compareChannelLayouts(&player->m_targetChannelLayout, &player->m_audioFrame->ch_layout)
+                        )&& !player->m_swrCtx)
+//                if((player->m_targetSampleFmt != player->m_audioFrame->format ||
+//                        player->m_targetFreq != player->m_audioFrame->sample_rate ||
+//                        player->m_targetNbSamples != player->m_audioFrame->nb_samples)
+//                        && !player->m_swrCtx)
                 {
                     ret = swr_alloc_set_opts2(&player->m_swrCtx,
                     &player->m_targetChannelLayout, player->m_targetSampleFmt, player->m_targetFreq,
@@ -203,11 +261,82 @@ void AVPlayer::fillAudioStreamCallback(void *userData, uint8_t *stream, int len)
          */
         SDL_MixAudio(stream, player->m_audioBuf + player->m_audioBufIndex, tmpLen, player->m_volume);
         len -= tmpLen;
+        player->m_audioBufIndex += tmpLen;
         stream += tmpLen;
+    }
+    player->m_audioClock.setClock(audioPts);
+    //发送时间戳变化信号,因为进度以整数秒单位变化展示，
+    //所以大于一秒才发送，避免过于频繁的信号槽通信消耗性能
+    uint32_t _pts = (uint32_t)audioPts;
+    if(_pts != player->m_lastAudioPts){
+        emit player->avPtsChanged(_pts);
+        _pts = player->m_lastAudioPts;
     }
 
 }
-bool compareChannelLayouts(const AVChannelLayout *layout1, const AVChannelLayout *layout2)
+
+
+void AVPlayer::initVideo()
+{
+    m_frameTimer = 0.0;
+    m_videoCodecPar = m_decoder->videoCodecPar();
+    m_videoIndex = m_decoder->videoIndex();
+
+    m_imageWidth = m_videoCodecPar->width;
+    m_imageHeight = m_videoCodecPar->height;
+    m_aspectRatio = m_imageWidth != 0 && m_imageHeight != 0 ? static_cast<float>(m_imageWidth) / static_cast<float>(m_imageHeight) : 1.0f;
+
+    m_dstPixFmt = AV_PIX_FMT_YUV422P;
+    m_swsFlag = SWS_BICUBIC;
+
+    int bufSize = av_image_get_buffer_size(m_dstPixFmt, m_imageWidth, m_imageHeight, 1);
+    m_videoBuf = (uint8_t*)av_realloc(m_videoBuf, bufSize * sizeof(uint8_t));
+    /**
+     * @brief av_image_fill_arrays 当前函数中用于初始化 m_pixels, m_pitch
+     * @param m_pixels 指向存储每个平面（如 YUV 图像的 Y、U、V 分量）的数据指针的数组
+     * @param m_pitch 指向每个平面的行大小（以字节为单位）的数组
+     * @param m_videoBuf 传入的图像数据
+     */
+    av_image_fill_arrays(m_pixels, m_pitch, m_videoBuf, m_dstPixFmt, m_imageWidth, m_imageHeight, 1);
+
+    ThreadPool::instance().commitTask([this](){
+        this->videoCallback();
+    });
+}
+
+void AVPlayer::videoCallback()
+{
+    double time = 0.00;
+    double duration = 0.00;
+    double delay = 0.00;
+    if(m_clockInitFlag == false){
+        initAVClock();
+    }
+
+    do
+    {
+        if(m_exit) break;
+        if(m_pause){
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            continue;
+        }
+
+        if(m_decoder->getRemainingVFrameSize()){
+
+        }
+
+
+    }while(true);
+}
+
+void AVPlayer::initAVClock()
+{
+    m_audioClock.setClock(0.00);
+    m_videoClock.setClock(0.00);
+    m_clockInitFlag = true;
+}
+
+bool AVPlayer::compareChannelLayouts(const AVChannelLayout *layout1, const AVChannelLayout *layout2)
 {
     // 比较通道顺序
     if (layout1->order != layout2->order) {

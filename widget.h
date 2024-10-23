@@ -32,13 +32,17 @@ private slots:
     void playSlot();
     void durationChangedSlot(uint32_t duration);
     void terminateSlot();
-
+    void avPtsChangedSlot(unsigned int pts);
+    void setVolume(int volume);
 private:
     Ui::Widget *ui;
     AVPlayer *m_player;
 
     QString m_formatFilter;
     uint32_t m_duration;
+
+    bool m_ptsSliderPressed;
+    int m_seekTarget;
 };
 
 #endif // WIDGET_H

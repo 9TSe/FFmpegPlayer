@@ -465,3 +465,10 @@ int Decoder::getAFrame(AVFrame *frame)
     m_audioFrameQueue.size--;
     return 1;
 }
+
+int Decoder::getRemainingVFrameSize()
+{
+    std::lock_guard<std::mutex> lock(m_videoFrameQueue.mutex);
+    if(m_videoFrameQueue.size == 0) return 0;
+    return m_videoFrameQueue.size - m_videoFrameQueue.shown;
+}
