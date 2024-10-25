@@ -20,9 +20,9 @@ public:
     ~Widget();
 
 protected:
-//    virtual void paintEvent(QPaintEvent *event) override;
-//    virtual void resizeEvent(QResizeEvent *event) override;
-//    virtual void keyReleaseEvent(QKeyEvent* event) override;
+    virtual void paintEvent(QPaintEvent *event) override;
+    virtual void resizeEvent(QResizeEvent *event) override;
+    virtual void keyReleaseEvent(QKeyEvent *event) override;
 
 private:
     void initUi();
@@ -34,6 +34,12 @@ private slots:
     void terminateSlot();
     void avPtsChangedSlot(unsigned int pts);
     void setVolume(int volume);
+    void pauseSlot();
+    void ptsSliderPressedSlot();
+    void ptsSliderMovedSlot(int position);
+    void ptsSliderReleaseSlot();
+    void seekForwardSlot();
+    void seekBackSlot();
 private:
     Ui::Widget *ui;
     AVPlayer *m_player;

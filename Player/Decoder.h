@@ -28,6 +28,8 @@ public:
     inline AVFormatContext *formatContext() const {return m_pAvFormatCtx;}
 
     int getAFrame(AVFrame *frame);
+    int getRemainingVFrameSize();
+    void seekTo(int32_t target);
 
 private:
     void initVal(); //复用播放器 重置变量
@@ -35,7 +37,8 @@ private:
     void audioDecode();
     void videoDecode();
     void clearQueueCache();
-
+    void pushAFrame(AVFrame *frame);
+    void pushVFrame(AVFrame *frame);
 
 
 public:
@@ -105,15 +108,22 @@ private:
 
     //跳转的绝对时间
     int64_t m_seekTarget;
-    //相对时间
-    int64_t m_seekRel;
+
+public:
+    // 获取上一帧
+    FFrame *getLastVFrame();
+    // 获取当前帧
+    FFrame *getVFrame();
+    // 获取下一帧
+    FFrame *getNextVFrame();
+    // 读索引后移一位
+    void setNextVFrame();
 
 private:
     void packetQueueFlush(FPacketQueue *queue);
     void pushPacket(FPacketQueue *queue, AVPacket *pkt);
     int getPacket(FPacketQueue *queue, AVPacket* destPkt, FPktDecoder *decoder);
-    void pushAFrame(AVFrame *frame);
-    void pushVFrame(AVFrame *frame);
+
 };
 
 #endif // DECODER_H

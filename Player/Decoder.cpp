@@ -76,6 +76,13 @@ void Decoder::exit()
     }
 }
 
+void Decoder::seekTo(int32_t target)
+{
+    if(m_isSeek) return; // 上次跳转未完成, 此次不予处理
+    m_seekTarget = target;
+    m_isSeek = true;
+}
+
 void Decoder::clearQueueCache()
 {
     {
@@ -288,7 +295,7 @@ void Decoder::audioDecode()
     AVFrame *frame = av_frame_alloc();
 
     while(true){
-        if(m_exit.load()) return;
+        if(m_exit.load()) break;
         if(m_audioFrameQueue.size >= m_maxFrameQueueSize){
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             continue;
@@ -337,7 +344,7 @@ void Decoder::videoDecode()
     AVPacket *pkt = av_packet_alloc();
     AVFrame *frame = av_frame_alloc();
     while(true){
-        if(m_exit.load()) return;
+        if(m_exit.load()) break;
         if(m_videoFrameQueue.size >= m_maxFrameQueueSize){
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             continue;
@@ -472,3 +479,48 @@ int Decoder::getRemainingVFrameSize()
     if(m_videoFrameQueue.size == 0) return 0;
     return m_videoFrameQueue.size - m_videoFrameQueue.shown;
 }
+
+Decoder::FFrame *Decoder::getLastVFrame()
+{
+    FFrame *frame = &m_videoFrameQueue.frameVec[m_videoFrameQueue.readIndex];
+    return frame;
+}
+
+Decoder::FFrame *Decoder::getVFrame()
+{
+    while(m_videoFrameQueue.size == 0){
+        std::unique_lock<std::mutex> lock(m_videoFrameQueue.mutex);
+        bool ret = m_videoFrameQueue.cond.wait_for(lock, std::chrono::milliseconds(100), [&](){
+            return !m_exit.load() && m_videoFrameQueue.size;
+        });
+        if(ret == false) return nullptr;
+    }
+    int index = (m_videoFrameQueue.readIndex + m_videoFrameQueue.shown) % m_maxFrameQueueSize;
+    FFrame *frame = &m_videoFrameQueue.frameVec[index];
+    return frame;
+}
+
+Decoder::FFrame *Decoder::getNextVFrame()
+{
+    while(m_videoFrameQueue.size < 2){
+        std::unique_lock<std::mutex> lock(m_videoFrameQueue.mutex);
+        bool ret = m_videoFrameQueue.cond.wait_for(lock, std::chrono::milliseconds(100), [&](){
+            return !m_exit.load() && m_videoFrameQueue.size >= 2;
+        });
+        if(ret == false) return nullptr;
+    }
+    int index = (m_videoFrameQueue.readIndex + m_videoFrameQueue.shown + 1) % m_maxFrameQueueSize;
+    FFrame *frame = &m_videoFrameQueue.frameVec[index];
+    return frame;
+}
+
+void Decoder::setNextVFrame()
+{
+    std::lock_guard<std::mutex> lock(m_videoFrameQueue.mutex);
+    if(m_videoFrameQueue.size == 0) return;
+    if(m_videoFrameQueue.shown == 0) m_videoFrameQueue.shown = 1;
+    av_frame_unref(&m_videoFrameQueue.frameVec[m_videoFrameQueue.readIndex].frame);
+    m_videoFrameQueue.readIndex = (m_videoFrameQueue.readIndex + 1) % m_maxFrameQueueSize;
+    m_videoFrameQueue.size--;
+}
+

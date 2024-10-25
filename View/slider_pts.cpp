@@ -14,7 +14,7 @@ void AVPtsSlider::setPtsPercent(double ptsPercent)
 {
     if(ptsPercent < 0.0 || ptsPercent > 1.0) return;
     m_ptsPercent = ptsPercent;
-    setValue((int)ptsPercent * this->width());
+    setValue((int)(ptsPercent * this->width()));
 }
 
 double AVPtsSlider::getPtsPercent()

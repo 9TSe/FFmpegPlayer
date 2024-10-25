@@ -1,8 +1,10 @@
 #include "AVPlayer.h"
 #include "MsgBox.h"
 #include "ThreadPool.h"
+#include "YUV422Frame.h"
 #include <QFileInfo>
 #include <QsLog.h>
+#include <QThread>
 
 AVPlayer::AVPlayer(QObject *parent)
     :QObject(parent) ,
@@ -83,6 +85,35 @@ AVPlayer::PlayState AVPlayer::getState()
         break;
     }
     return state;
+}
+
+void AVPlayer::handlePauseClick(bool isPause)
+{
+    if(SDL_GetAudioStatus() == SDL_AUDIO_STOPPED) return;
+    if(isPause){ // 暂停音频
+        if(SDL_GetAudioStatus() == SDL_AUDIO_PLAYING){
+            SDL_PauseAudio(1);
+            m_pause = true;
+            m_pauseTime = av_gettime_relative() / 1000000.0;
+        }
+    }
+    else{ // 重新播放
+        if(SDL_GetAudioStatus() == SDL_AUDIO_PAUSED){
+            SDL_PauseAudio(0);
+            m_pause = false;
+            m_frameTimer += av_gettime_relative() / 1000000.0 - m_pauseTime;
+        }
+    }
+}
+
+void AVPlayer::seekTo(int32_t time_s)
+{
+    if(time_s < 0) time_s = 0;
+    m_decoder->seekTo(time_s);
+}
+void AVPlayer::seekBy(int32_t time_s)
+{
+    seekTo((int32_t)m_audioClock.getClock() + time_s);
 }
 
 bool AVPlayer::play(const QString& url)
@@ -322,11 +353,85 @@ void AVPlayer::videoCallback()
         }
 
         if(m_decoder->getRemainingVFrameSize()){
+            Decoder::FFrame *lastFrame = m_decoder->getLastVFrame();
+            Decoder::FFrame *curFrame = m_decoder->getVFrame();
 
+            if(curFrame->serial != m_decoder->videoPktSerial()){
+                m_decoder->setNextVFrame();
+                continue;
+            }
+            if(curFrame->serial != lastFrame->serial){
+                m_frameTimer = av_gettime_relative() / 1000000.0;
+            }
+            duration = frameDuration(lastFrame, curFrame);
+            delay = computeTargetDelay(duration);
+            time = av_gettime_relative() / 1000000.0;
+
+            if(time < m_frameTimer + delay){ // 没有到显示时间
+                QThread::msleep((uint32_t)(FFMIN(AV_SYNC_REJUDGESHOLD, m_frameTimer + delay - time)*1000));
+                continue;
+            }
+            m_frameTimer += delay;
+            if(time - m_frameTimer > AV_SYNC_THRESHOLD_MAX){ // 过了显示时间
+                m_frameTimer = time; // 当前帧显示时间抓紧到现在
+            }
+            // 判断是否进行丢帧处理
+            if(m_decoder->getRemainingVFrameSize() > 1){
+                Decoder::FFrame *nextFrame = m_decoder->getNextVFrame();
+                duration = nextFrame->pts - curFrame->pts;
+                // 当前时间已经过了下一帧展现结束的时间
+                if(time > m_frameTimer + duration){
+                    m_decoder->setNextVFrame();
+                    QLOG_INFO() << "abandon vFrame";
+                    continue;
+                }
+            }
+            disPlayImage(&curFrame->frame);
+            m_decoder->setNextVFrame();
         }
-
-
+        else{
+            QThread::msleep(10);
+        }
     }while(true);
+}
+
+
+void AVPlayer::disPlayImage(AVFrame *frame)
+{
+    if(!frame) return;
+    if((m_videoCodecPar->width != m_imageWidth ||
+        m_videoCodecPar->height != m_imageHeight ||
+        m_videoCodecPar->format != m_dstPixFmt) &&!m_swsCtx)
+    {
+        /** @brief get m_swsCtx
+         * @param m_swsFlag 缩放的标志 SWS_BICUBIC ...
+         * @param frame... 源数据
+         * @param m_... 目标图像
+         */
+        m_swsCtx = sws_getCachedContext(m_swsCtx, frame->width, frame->height,(AVPixelFormat)frame->format
+                        ,m_imageWidth, m_imageHeight, m_dstPixFmt, m_swsFlag, nullptr, nullptr, nullptr);
+    }
+    if(m_swsCtx){
+        /**
+         * @brief 进行格式转换
+         * @param frame->data 指向源图像数据的指针数组，通常是一个包含每个图像平面的指针的数组（如 YUV 图像）
+         * @param linesize 图像的步幅（每行字节数）数组，通常与源图像的每个平面对应
+         * @param 0 处理的源图像的起始行（Y 坐标）
+         * @param srcSliceH: 指定要处理的源图像的高度（以行数为单位）。
+         * @param dst: 指向目标图像数据的指针数组，通常也是一个包含每个图像平面的指针的数组。
+         * @param dstStride: 目标图像的步幅数组，与目标图像的每个平面对应
+         */
+        sws_scale(m_swsCtx, static_cast<const uint8_t* const*>(frame->data),
+                  frame->linesize, 0, frame->height, m_pixels, m_pitch);
+//        QSharedPointer<YUV422Frame> frame = QSharedPointer<YUV422Frame>::create(m_pixels[0], m_imageWidth, m_imageHeight);
+//        emit frameChanged(frame);
+        emit frameChanged(QSharedPointer<YUV422Frame>::create(m_pixels[0], m_imageWidth, m_imageHeight));
+        //QLOG_INFO() << "frameChanged signal send";
+    }
+    else{
+        QLOG_ERROR() << "sws_getChachedContext fail";
+    }
+    m_videoClock.setClock(frame->pts * av_q2d(m_fmtCtx->streams[m_videoIndex]->time_base));
 }
 
 void AVPlayer::initAVClock()
@@ -335,6 +440,44 @@ void AVPlayer::initAVClock()
     m_videoClock.setClock(0.00);
     m_clockInitFlag = true;
 }
+
+double AVPlayer::frameDuration(Decoder::FFrame *lastFrame, Decoder::FFrame *currentFrame)
+{
+    if(lastFrame->serial == currentFrame->serial){
+        double duration = currentFrame->pts - lastFrame->pts;
+        if(std::isnan(duration) || duration > AV_NOSYNC_THRESHOLD){ //帧间持续时间过长过短
+            return lastFrame->duration;
+        }
+        else{
+            return duration;
+        }
+    }
+    else{
+        return 0.00;
+    }
+}
+
+double AVPlayer::computeTargetDelay(double delay) // 传入的是两帧的时间间隔
+{
+    double diff = m_videoClock.getClock() - m_audioClock.getClock();
+    // 当 min < delay < max时赋值于 sync
+    double sync = FFMAX(AV_SYNC_THRESHOLD_MIN, FFMIN(AV_SYNC_THRESHOLD_MAX, delay));
+
+    // 如果diff太大直接放弃同步
+    if(!std::isnan(diff) && std::fabs(diff) < AV_NOSYNC_THRESHOLD){
+        if(diff <= -sync){ // 视频领先于音频
+            delay = FFMAX(0, delay + diff); // 减少延迟等待音频
+        }
+        else if(diff >= sync && delay > AV_SYNC_FRAMEDUP_THRESHOLD){ // 音频远领先于视频
+            delay += diff; // 增大延迟追上音频
+        }
+        else if(diff >= sync){
+            delay *= 2;
+        }
+    }
+    return delay;
+}
+
 
 bool AVPlayer::compareChannelLayouts(const AVChannelLayout *layout1, const AVChannelLayout *layout2)
 {

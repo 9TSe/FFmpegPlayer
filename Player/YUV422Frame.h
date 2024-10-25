@@ -32,7 +32,7 @@ private:
         m_pixelH = pixelH;
         int size = pixelH * pixelW;
         if(!m_buffer){
-            m_buffer = (uint8_t*)malloc(sizeof(size * 2));
+            m_buffer = (uint8_t*)malloc(size * 2);
             memcpy(m_buffer, buffer, size);
             memcpy(m_buffer + size, buffer + size, size >> 1);
             memcpy(m_buffer + size * 3 / 2, buffer + size * 3 / 2 , size >> 1);

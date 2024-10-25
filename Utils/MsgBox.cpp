@@ -9,6 +9,7 @@ MsgBox::MsgBox(QWidget *parent, bool isSucess, const QString& text)
     setWindowModality(Qt::ApplicationModal); //模态
     setWindowFlags(Qt::Dialog | Qt::WindowCloseButtonHint | Qt::WindowStaysOnTopHint); //关闭按钮, 展示于上方
     setWindowTitle("提示");
+    setWindowIcon(QIcon(":/res/images/knight.jpg"));
     setFixedSize(320, 120);
     setStyleSheet(".MsgBox{background-color:rgb(45,45,55)}");
 
