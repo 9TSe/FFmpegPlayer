@@ -8,7 +8,6 @@ MsgBox::MsgBox(QWidget *parent, bool isSucess, const QString& text)
 {
     setWindowModality(Qt::ApplicationModal); //模态
     setWindowFlags(Qt::Dialog | Qt::WindowCloseButtonHint | Qt::WindowStaysOnTopHint); //关闭按钮, 展示于上方
-    setWindowTitle("提示");
     setWindowIcon(QIcon(":/res/images/knight.jpg"));
     setFixedSize(320, 120);
     setStyleSheet(".MsgBox{background-color:rgb(45,45,55)}");
@@ -28,8 +27,10 @@ MsgBox::MsgBox(QWidget *parent, bool isSucess, const QString& text)
     QString filename;
     if(isSucess){
         filename = ":/res/images/madline3.jpg";
+        setWindowTitle("提示");
     }else{
         filename = ":/res/images/madline4.jpg";
+        setWindowTitle("注意");
     }
 
     QLabel *iconLabel = new QLabel(this);

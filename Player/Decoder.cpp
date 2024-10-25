@@ -89,6 +89,9 @@ void Decoder::clearQueueCache()
         std::lock_guard<std::mutex> lock(m_audioPktQueue.mutex);
         while(m_audioPktQueue.size > 0){
             av_packet_unref(&m_audioPktQueue.pktVec[m_audioPktQueue.readIndex].pkt);
+//          AVPacket *packet = &m_audioPktQueue.pktVec[m_audioPktQueue.readIndex].pkt;
+//          av_packet_unref(packet);
+//          av_packet_free(&packet);
             m_audioPktQueue.readIndex = (m_audioPktQueue.readIndex + 1) % m_maxPktQueueSize;
             m_audioPktQueue.size--;
         }
@@ -97,6 +100,9 @@ void Decoder::clearQueueCache()
         std::lock_guard<std::mutex> lock(m_videoPktQueue.mutex);
         while(m_videoPktQueue.size > 0){
             av_packet_unref(&m_videoPktQueue.pktVec[m_videoPktQueue.readIndex].pkt);
+//          AVPacket *packet = &m_videoPktQueue.pktVec[m_videoPktQueue.readIndex].pkt;
+//          av_packet_unref(packet);
+//          av_packet_free(&packet);
             m_videoPktQueue.readIndex = (m_videoPktQueue.readIndex + 1) % m_maxPktQueueSize;
             m_videoPktQueue.size--;
         }
@@ -105,6 +111,9 @@ void Decoder::clearQueueCache()
         std::lock_guard<std::mutex> lock(m_audioFrameQueue.mutex);
         while(m_audioFrameQueue.size > 0){
             av_frame_unref(&m_audioFrameQueue.frameVec[m_audioFrameQueue.readIndex].frame);
+//          AVFrame *frame = &m_audioFrameQueue.frameVec[m_audioFrameQueue.readIndex].frame;
+//          av_frame_unref(frame);
+//          av_frame_free(&frame);
             m_audioFrameQueue.readIndex = (m_audioPktQueue.readIndex + 1) % m_maxFrameQueueSize;
             m_audioFrameQueue.size--;
         }
@@ -113,6 +122,9 @@ void Decoder::clearQueueCache()
         std::lock_guard<std::mutex> lock(m_videoFrameQueue.mutex);
         while(m_videoFrameQueue.size > 0){
             av_frame_unref(&m_videoFrameQueue.frameVec[m_videoFrameQueue.readIndex].frame);
+//          AVFrame *frame = &m_videoFrameQueue.frameVec[m_videoFrameQueue.readIndex].frame;
+//          av_frame_unref(frame);
+//          av_frame_free(&frame);
             m_videoPktQueue.readIndex = (m_videoFrameQueue.readIndex + 1) % m_maxFrameQueueSize;
             m_videoFrameQueue.size--;
         }

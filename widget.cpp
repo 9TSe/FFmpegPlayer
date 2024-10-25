@@ -22,7 +22,6 @@ Widget::Widget(QWidget *parent) :
     setWindowTitle(title);
 
     m_player = new AVPlayer(this);
-
     initUi(); //初始ui中控件等属性
 
     // 展现视频
@@ -67,10 +66,11 @@ Widget::~Widget()
 
 void Widget::playSlot()
 {
+    terminateSlot();
     const QString url = ui->lineEdit_input->text();
     if(url.count()){
         if(m_player->play(url)){
-            ui->btn_play->setEnabled(false);
+            //ui->btn_play->setEnabled(false);
             ui->btn_forward->setEnabled(true);
             ui->btn_back->setEnabled(true);
             ui->btn_pauseon->setEnabled(true);
@@ -91,7 +91,7 @@ void Widget::initUi()
     ui->label_duration->setAlignment(Qt::AlignCenter);
     ui->label_seperator->setAlignment(Qt::AlignCenter);
 
-    ui->lineEdit_input->setText("D:/ffmpeg/learn/test.mp4");
+    ui->lineEdit_input->setText("D:/ffmpeg/learn/miku.mp4");
 
     ui->btn_back->setEnabled(false);
     ui->btn_pauseon->setEnabled(false);
@@ -128,7 +128,7 @@ void Widget::terminateSlot()
     ui->btn_pauseon->setText(QString("暂停"));
     ui->btn_play->setEnabled(true);
     m_player->initPlayer();
-    MsgBox::success(this, "视频已播放完毕");
+    //MsgBox::success(this, "视频已播放完毕");
 }
 
 void Widget::avPtsChangedSlot(unsigned int pts)

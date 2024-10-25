@@ -51,7 +51,7 @@ void AVPlayer::initPlayer()
     if(getState() != AVPlayer::AV_STOPPED){
         m_exit = true;
         if(getState() == AVPlayer::AV_PLAYING){
-            SDL_PauseAudio(1); //传入1停止音频
+            SDL_PauseAudio(1); //停止音频
         }
         m_decoder->exit();
         SDL_CloseAudio();
@@ -61,6 +61,12 @@ void AVPlayer::initPlayer()
         if(m_swsCtx){
             sws_freeContext(m_swsCtx);
         }
+//      if(m_audioBuf){
+//          av_free(m_audioBuf);
+//      }
+//      if(m_videoBuf){
+//          av_free(m_videoBuf);
+//      }
         m_swrCtx = nullptr;
         m_swsCtx = nullptr;
     }
@@ -89,16 +95,16 @@ AVPlayer::PlayState AVPlayer::getState()
 
 void AVPlayer::handlePauseClick(bool isPause)
 {
-    if(SDL_GetAudioStatus() == SDL_AUDIO_STOPPED) return;
-    if(isPause){ // 暂停音频
-        if(SDL_GetAudioStatus() == SDL_AUDIO_PLAYING){
+    PlayState state = getState();
+    if(state == AV_STOPPED) return;
+    if(isPause){
+        if(state == AV_PLAYING){
             SDL_PauseAudio(1);
             m_pause = true;
             m_pauseTime = av_gettime_relative() / 1000000.0;
         }
-    }
-    else{ // 重新播放
-        if(SDL_GetAudioStatus() == SDL_AUDIO_PAUSED){
+    }else{
+        if(state == AV_PAUSED){
             SDL_PauseAudio(0);
             m_pause = false;
             m_frameTimer += av_gettime_relative() / 1000000.0 - m_pauseTime;
@@ -174,7 +180,6 @@ bool AVPlayer::initSDL()
         return false;
     }
 
-
     m_fmtCtx = m_decoder->formatContext();
     m_audioIndex = m_decoder->audioIndex();
     m_targetSampleFmt = AV_SAMPLE_FMT_S16; //16bits 位深
@@ -207,10 +212,6 @@ void AVPlayer::fillAudioStreamCallback(void *userData, uint8_t *stream, int len)
                         player->m_targetNbSamples != player->m_audioFrame->nb_samples
                         ||!AVPlayer::compareChannelLayouts(&player->m_targetChannelLayout, &player->m_audioFrame->ch_layout)
                         )&& !player->m_swrCtx)
-//                if((player->m_targetSampleFmt != player->m_audioFrame->format ||
-//                        player->m_targetFreq != player->m_audioFrame->sample_rate ||
-//                        player->m_targetNbSamples != player->m_audioFrame->nb_samples)
-//                        && !player->m_swrCtx)
                 {
                     ret = swr_alloc_set_opts2(&player->m_swrCtx,
                     &player->m_targetChannelLayout, player->m_targetSampleFmt, player->m_targetFreq,
@@ -227,7 +228,7 @@ void AVPlayer::fillAudioStreamCallback(void *userData, uint8_t *stream, int len)
                     const uint8_t **datas = (const uint8_t**)player->m_audioFrame->extended_data;
                     // 每个通道期望的样本数量(1024) +256提供足够空间
                     int outSampleCount = (uint64_t)player->m_audioFrame->nb_samples *
-                            (player->m_targetFreq / player->m_audioFrame->sample_rate) + 256;
+                            (player->m_targetFreq / player->m_audioFrame->sample_rate) + 128;
                     // 缓冲区所需要的大小, 返回单位为字节
                     int outSize = av_samples_get_buffer_size(nullptr,
                                                              player->m_targetChannelLayout.nb_channels,
