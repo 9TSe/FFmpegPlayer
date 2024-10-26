@@ -352,7 +352,7 @@ void Decoder::audioDecode()
 
 void Decoder::videoDecode()
 {
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    //std::this_thread::sleep_for(std::chrono::milliseconds(100));
     AVPacket *pkt = av_packet_alloc();
     AVFrame *frame = av_frame_alloc();
     while(true){

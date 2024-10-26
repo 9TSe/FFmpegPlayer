@@ -64,9 +64,9 @@ void AVPlayer::initPlayer()
 //      if(m_audioBuf){
 //          av_free(m_audioBuf);
 //      }
-//      if(m_videoBuf){
-//          av_free(m_videoBuf);
-//      }
+      if(m_videoBuf){
+          av_free(m_videoBuf);
+      }
         m_swrCtx = nullptr;
         m_swsCtx = nullptr;
     }
@@ -304,7 +304,7 @@ void AVPlayer::fillAudioStreamCallback(void *userData, uint8_t *stream, int len)
         emit player->avPtsChanged(_pts);
         _pts = player->m_lastAudioPts;
     }
-
+    //delete player;
 }
 
 
@@ -322,7 +322,8 @@ void AVPlayer::initVideo()
     m_swsFlag = SWS_BICUBIC;
 
     int bufSize = av_image_get_buffer_size(m_dstPixFmt, m_imageWidth, m_imageHeight, 1);
-    m_videoBuf = (uint8_t*)av_realloc(m_videoBuf, bufSize * sizeof(uint8_t));
+    //m_videoBuf = (uint8_t*)av_realloc(m_videoBuf, bufSize * sizeof(uint8_t));
+    m_videoBuf = (uint8_t*)av_malloc(bufSize * sizeof(uint8_t));
     /**
      * @brief av_image_fill_arrays 当前函数中用于初始化 m_pixels, m_pitch
      * @param m_pixels 指向存储每个平面（如 YUV 图像的 Y、U、V 分量）的数据指针的数组
@@ -424,10 +425,10 @@ void AVPlayer::disPlayImage(AVFrame *frame)
          */
         sws_scale(m_swsCtx, static_cast<const uint8_t* const*>(frame->data),
                   frame->linesize, 0, frame->height, m_pixels, m_pitch);
-//        QSharedPointer<YUV422Frame> frame = QSharedPointer<YUV422Frame>::create(m_pixels[0], m_imageWidth, m_imageHeight);
-//        emit frameChanged(frame);
+
+//        QSharedPointer<YUV422Frame> av_frame = QSharedPointer<YUV422Frame>::create(m_pixels[0], m_imageWidth, m_imageHeight);
+//        emit frameChanged(av_frame);
         emit frameChanged(QSharedPointer<YUV422Frame>::create(m_pixels[0], m_imageWidth, m_imageHeight));
-        //QLOG_INFO() << "frameChanged signal send";
     }
     else{
         QLOG_ERROR() << "sws_getChachedContext fail";

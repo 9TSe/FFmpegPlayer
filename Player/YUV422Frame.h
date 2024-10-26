@@ -13,14 +13,14 @@ public:
 
     ~YUV422Frame()
     {
-        if(!m_buffer){
+        if(m_buffer != nullptr){
             free(m_buffer);
         }
     }
 
     inline uint8_t *getBufferY() const {return m_buffer;}
     inline uint8_t *getBufferU() const {return m_buffer + m_pixelH * m_pixelW;}
-    inline uint8_t *getBufferV() const {return m_buffer + (m_pixelH * m_pixelW) * 3 / 2;}
+    inline uint8_t *getBufferV() const {return m_buffer + m_pixelH * m_pixelW * 3 / 2;}
     inline uint32_t getPixelW() const {return m_pixelW;}
     inline uint32_t getPixelH() const {return m_pixelH;}
 
